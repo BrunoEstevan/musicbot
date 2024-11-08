@@ -22,11 +22,6 @@ This is the most complete discord bot base you've ever seen! Developed by [@rinc
 - [Responder](https://constatic-docs.vercel.app/docs/discord/responders)
 - [Events](https://constatic-docs.vercel.app/docs/discord/events)
 
-## Config Node.JS
-Check your Node version
-Tip: To manage more than one Node version on your machine, use NVM (Node Version Manager)!
- 
- NodeJS Version: 18.20.2
 
 ## Install ffmpeg
 
