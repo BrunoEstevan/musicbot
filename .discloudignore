@@ -1,0 +1,33 @@
+# Essential structure
+# - /src
+# - /.env
+# - /.discloudignore
+# - /discloud.config
+# - /package.json
+# - /tsconfig.json
+
+# Ignored structure
+
+# Folders
+/.vscode
+/src
+/deprecated
+/discloud
+/node_modules
+
+# Files
+/.env.development
+/.env.example
+/.eslintrc.json
+/.gitignore
+/tsconfig.json
+/package-lock.json
+/README.md
+/LICENSE
+
+# Extensions
+*.md
+*.zip
+*.exe
+*.development.json
+
