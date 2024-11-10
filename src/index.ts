@@ -4,7 +4,7 @@ import { GatewayIntentBits,} from "discord.js";
 import { YoutubeiExtractor } from "discord-player-youtubei";
 import { SpotifyExtractor } from "@discord-player/extractor";
 import { spotifyCredentials } from "#auth";
-
+import { ActivityType  } from "discord.js";
 const client = await bootstrapApp({
     workdir: import.meta.dirname,
     commands: {
@@ -16,9 +16,9 @@ const client = await bootstrapApp({
         GatewayIntentBits.MessageContent
     ],
     beforeLoad(client) {
-
+       
          const { clientId, clientSecret } = spotifyCredentials;
-
+       
 
         const oauthTokens = process.env.YTB_OAUTH;
         const player = Player.create(Object(client), {
@@ -38,4 +38,11 @@ const client = await bootstrapApp({
         Object.assign(client, { player });
     },
 }) 
+client.on('ready', () => {
+   
+    if (client.user) {
+        client.user.setActivity("Commands: /music 🤖", { type: ActivityType.Custom });
+    }
+});
+
 console.log(client);

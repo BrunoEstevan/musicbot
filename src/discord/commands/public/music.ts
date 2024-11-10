@@ -144,7 +144,7 @@ new Command({
                     interaction.respond(results.tracks.map(track => ({
                         name: limitText(`${track.source} - ${track.duration} - ${track.title}`, 100),
                         value: track.url
-                    })).slice(0, 25));
+                    })).slice(0, 24));
                 }
                 catch { }
                 return;
@@ -156,7 +156,7 @@ new Command({
                     name: limitText(`${index}) ${track.title}`, 100),
                     value: track.id
                 }));
-                interaction.respond(choices.slice(0, 25));
+                interaction.respond(choices.slice(0, 24));
                 return;
             }
         }
