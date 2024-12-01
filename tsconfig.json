@@ -36,6 +36,8 @@
 			"#lib": ["./lib/index.ts"],
 			"#types": ["./types/index.ts"],
 			"#auth": ["./auth/index.ts"],
+			"#index": ["./index.ts"],
+			"#proxy": ["./proxy/index.ts"],
 			"@discordjs/builders/*": ["ignore"]
 		}
 	},

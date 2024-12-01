@@ -1,5 +1,5 @@
 
-interface SpotifyCredentialsTypes {
+type  SpotifyCredentialsTypes = {
     clientId: string;
     clientSecret: string;
 }
