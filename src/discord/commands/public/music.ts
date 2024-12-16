@@ -29,7 +29,8 @@ new Command({
               (type) =>
                 type === "youtube" ||
                 type === "spotifySearch" ||
-                type === "autoSearch"
+                type === "autoSearch"||
+                type === "spotifyPlaylist"
             )
             .map((type) => ({
               name: type,
@@ -112,7 +113,8 @@ new Command({
               (type) =>
                 type === "youtube" ||
                 type === "spotifySearch"|| 
-                type === "autoSearch"
+                type === "autoSearch"||
+                type === "spotifyPlaylist" 
             )
             .map((type) => ({
               name: type,

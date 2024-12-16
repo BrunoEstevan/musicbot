@@ -1,11 +1,11 @@
 type  YoutubeTypes = {
-    token: string;
+    token2: string;
     visitorData: string;
 }
 
 
 export const youtubeCredentials : YoutubeTypes = {
-     token: process.env.YOUTUBE as string,
+     token2: process.env.YOUTUBE as string,
      visitorData : process.env.VISITORDATA as string
 }
      

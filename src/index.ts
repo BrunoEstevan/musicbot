@@ -10,6 +10,7 @@ import { ActivityType } from "discord.js";
 import { ProxyAgent } from "undici";
 import { proxyMain } from "#proxy";
 
+
 const client = await bootstrapApp({
   workdir: import.meta.dirname,
   commands: {
@@ -29,11 +30,12 @@ const client = await bootstrapApp({
         filter: "videoonly",
       },
     });
-    const { token, visitorData } = youtubeCredentials;
+    const { token2, visitorData } = youtubeCredentials;
     const { clientId, clientSecret } = spotifyCredentials;
     const {  proxyUrl } = proxyMain
    
     const proxyAgent = new ProxyAgent(proxyUrl);
+
      console.log(proxyAgent);
     const options = {
       streamOptions: {
@@ -44,7 +46,7 @@ const client = await bootstrapApp({
     };
       
     const youtubeExtractor = await player.extractors.register(
-      YoutubeiExtractor,
+      YoutubeiExtractor, 
       options
     );
 
@@ -55,10 +57,11 @@ const client = await bootstrapApp({
         if(innertube) {
         // const token = await poTokenExtraction(innertube);
         const tokenResult: PoTokenResult = {
-          poToken: token,
+          poToken: token2,
           integrityTokenData: {} as IntegrityTokenData,
         };
-      
+        console.log(tokenResult);
+        
         youtubeExtractor.setPoToken(
           tokenResult,
           visitorData
