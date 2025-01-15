@@ -14,7 +14,7 @@ import { proxyMain } from "#proxy";
 const client = await bootstrapApp({
   workdir: import.meta.dirname,
   commands: {
-    guilds: ["1037734705753247764","1252034169903779920","739845524361969764"]
+    guilds: ["1037734705753247764","1252034169903779920","739845524361969764","1170830808886550588"]
    },
   intents: [
     GatewayIntentBits.Guilds,
@@ -30,6 +30,17 @@ const client = await bootstrapApp({
         filter: "videoonly",
       },
     });
+  //  const lavalinkNodes = [ {
+  //     host: "localhost",
+  //     port: 2333,
+  //     password: "7531ccon",
+  //     secure: false
+
+  //  },
+  // ];
+   
+  
+
     const { token2, visitorData } = youtubeCredentials;
     const { clientId, clientSecret } = spotifyCredentials;
     const {  proxyUrl } = proxyMain
