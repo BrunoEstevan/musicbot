@@ -1,84 +1,70 @@
 import { bootstrapApp } from "#base";
 import { PoTokenResult, IntegrityTokenData } from "bgutils-js";
-// import { poTokenExtraction } from "discord-player-youtubei/experimental";
-import { Player } from "discord-player";
-import { GatewayIntentBits } from "discord.js";
+import {  Player } from "discord-player";
+import { GatewayIntentBits, ActivityType } from "discord.js";
 import { YoutubeiExtractor } from "discord-player-youtubei";
 import { SpotifyExtractor } from "@discord-player/extractor";
-import { spotifyCredentials, youtubeCredentials } from "#auth";
-import { ActivityType } from "discord.js";
-import { ProxyAgent } from "undici";
-import { proxyMain } from "#proxy";
+import { cookies, spotifyCredentials, youtubeCredentials } from "#auth";
+import { spawn } from "child_process";
+// import { ProxyAgent } from "undici";
+// import { proxyMain } from "#proxy";
 
 
-const client = await bootstrapApp({
+
+export const client = await bootstrapApp({
   workdir: import.meta.dirname,
   commands: {
-    guilds: ["1037734705753247764","1252034169903779920","739845524361969764","1170830808886550588"]
-   },
+    guilds: [
+      "1037734705753247764",
+      "1252034169903779920",
+      "739845524361969764",
+      "1170830808886550588",
+      "981733220817207316",
+      "858859024618487828",
+    ],
+  },
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+
   ],
-  beforeLoad: async(client) => {
-    
+  beforeLoad: async (client) => {
     const player = Player.create(Object(client), {
       ytdlOptions: {
         quality: "highestaudio",
         filter: "videoonly",
-      },
+      }
     });
-  //  const lavalinkNodes = [ {
-  //     host: "localhost",
-  //     port: 2333,
-  //     password: "7531ccon",
-  //     secure: false
 
-  //  },
-  // ];
-   
-  
 
     const { token2, visitorData } = youtubeCredentials;
     const { clientId, clientSecret } = spotifyCredentials;
-    const {  proxyUrl } = proxyMain
-   
-    const proxyAgent = new ProxyAgent(proxyUrl);
+    // const { proxyUrl } = proxyMain;
+    const { cookie } = cookies;
+    // const proxyAgent = new ProxyAgent(proxyUrl);
 
-     console.log(proxyAgent);
-    const options = {
+    const tokenResult: PoTokenResult = {
+      poToken: token2,
+      integrityTokenData: {} as IntegrityTokenData,
+    };
+
+    player.extractors.register(YoutubeiExtractor, {
       streamOptions: {
         useClient: "WEB",
       },
       disablePlayer: false,
-      agent: proxyAgent,
-    };
-      
-    const youtubeExtractor = await player.extractors.register(
-      YoutubeiExtractor, 
-      options
-    );
+      // proxy: proxyAgent,
+      overrideBridgeMode: "yt",
+      cookie: cookie,
+      trustedTokens: {
+        poToken: tokenResult.poToken || tokenResult.integrityTokenData.toString(),
+        visitorData: visitorData
+      }
+    });
 
-    
-
-    if (youtubeExtractor ) {
-        const innertube = youtubeExtractor.innerTube;
-        if(innertube) {
-        // const token = await poTokenExtraction(innertube);
-        const tokenResult: PoTokenResult = {
-          poToken: token2,
-          integrityTokenData: {} as IntegrityTokenData,
-        };
-        console.log(tokenResult);
-        
-        youtubeExtractor.setPoToken(
-          tokenResult,
-          visitorData
-        );
-      } 
-    }
     player.extractors.register(SpotifyExtractor, {
       clientId: clientId,
       clientSecret: clientSecret,
@@ -90,10 +76,35 @@ const client = await bootstrapApp({
 
 client.on("ready", () => {
   if (client.user) {
-    client.user.setActivity("Commands: /music 🤖", {
+    client.user.setActivity("Commands: /music 🤖, /musicplayer 🎵", {
       type: ActivityType.Custom,
     });
   }
 });
 
-console.log(client);
+
+process.on('uncaughtException', (error) => {
+  console.error('Erro não capturado:', error);
+  // O bot continuará funcionando mesmo com erros não capturados
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Promessa rejeitada não tratada:', reason);
+  // O bot continuará funcionando mesmo com promessas rejeitadas
+});
+
+// Handle process exit to run the restart script if needed
+process.on('exit', (code) => {
+  console.log(`Bot process is exiting with code ${code}. Checking for restart...`);
+  
+  if (code === 0) {
+    // If there's a clean exit with code 0, try to run the restart script
+    // This is executed in a detached process to allow this process to exit
+    const child = spawn('npm', ['run', 'restart'], {
+      detached: true,
+      stdio: 'ignore',
+      cwd: process.cwd(),
+    });
+    child.unref();
+  }
+});

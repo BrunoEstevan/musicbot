@@ -29,13 +29,26 @@ new Command({
               (type) =>
                 type === "youtube" ||
                 type === "spotifySearch" ||
-                type === "autoSearch"||
-                type === "spotifyPlaylist"
+                type === "spotifyPlaylist" ||
+                type === "spotifySong"
+                
             )
             .map((type) => ({
               name: type,
               value: type,
             })),
+        },
+        {
+          name: "volume",
+          description: "Set the volume level (0-100)",
+          type: ApplicationCommandOptionType.Integer,
+          minValue: 0,
+          maxValue: 100,
+        },
+        {
+          name: "panel",
+          description: "Open the music control panel",
+          type: ApplicationCommandOptionType.Boolean,
         },
       ],
     },
@@ -113,8 +126,8 @@ new Command({
               (type) =>
                 type === "youtube" ||
                 type === "spotifySearch"|| 
-                type === "autoSearch"||
-                type === "spotifyPlaylist" 
+                type === "spotifyPlaylist" ||
+                type === "spotifySong"
             )
             .map((type) => ({
               name: type,
@@ -139,6 +152,11 @@ new Command({
     {
       name: "shuffle",
       description: "Shuffle the queue",
+      type: ApplicationCommandOptionType.Subcommand,
+    },
+    {
+      name: "clear",
+      description: "Clear the current queue",
       type: ApplicationCommandOptionType.Subcommand,
     },
     {
@@ -228,9 +246,15 @@ new Command({
     switch (options.getSubcommand(true)) {
       case "play": {
         const query = options.getString("query", true);
-        const searchEngine = options.getString("engine") ?? QueryType.SPOTIFY_SEARCH;
+        const searchEngine = options.getString("engine") ?? QueryType.YOUTUBE;
+        const volume = options.getInteger("volume");
+        const panel = options.getBoolean("panel");
+        
+        let track, searchResult;
+        
+        // Tenta primeiro com o engine especificado (ou YouTube por padrão)
         try {
-          const { track, searchResult } = await player.play(
+          const result = await player.play(
             voiceChannel as never,
             query,
             {
@@ -238,48 +262,95 @@ new Command({
               nodeOptions: { metadata },
             }
           );
-          const display = [];
-          if (searchResult.playlist) {
-            const { tracks, title, url } = searchResult.playlist;
-            display.push(
-              `Added ${tracks.length} tracks from the playlist [${title}](${url})`,
-              ...tracks.map((track) => `${track.title}`).slice(0, 8),
-              "..."
+          track = result.track;
+          searchResult = result.searchResult;
+        } catch (err) {
+          // Se falhou, tenta com Spotify Song
+          try {
+            const result = await player.play(
+              voiceChannel as never,
+              query,
+              {
+                searchEngine: QueryType.SPOTIFY_SONG,
+                nodeOptions: { metadata },
+              }
             );
-          } else {
-            display.push(
-              `${queue?.size ? "Added to the queue" : "Now playing"} ${
-                track.title
-              }`
-            );
+            track = result.track;
+            searchResult = result.searchResult;
+          } catch (spotifyErr) {
+            // Se ainda falhou, tenta com Spotify Search
+            try {
+              const result = await player.play(
+                voiceChannel as never,
+                query,
+                {
+                  searchEngine: QueryType.SPOTIFY_SEARCH,
+                  nodeOptions: { metadata },
+                }
+              );
+              track = result.track;
+              searchResult = result.searchResult;
+            } catch (finalErr) {
+              interaction.editReply(res.danger(""));
+              return;
+            }
           }
-          interaction.editReply(res.success(brBuilder(display)));
-        } catch (_) {
-          interaction.editReply(res.danger("Couldn't play the song"));
         }
+        
+        // Set the volume if specified
+        if (volume !== null) {
+          const queue = player.queues.cache.get(guild.id);
+          if (queue) {
+            queue.node.setVolume(volume);
+          }
+        }
+        
+        // Abrir o painel de controle se solicitado
+        if (panel) {
+          const queue = player.queues.cache.get(guild.id);
+          if (queue) {
+            const controlsMenu = menus.music.controls(queue, voiceChannel);
+            await interaction.editReply(controlsMenu);
+            return;
+          }
+        }
+        
+        const display = [];
+        if (searchResult.playlist) {
+          const { tracks, title, url } = searchResult.playlist;
+          display.push(
+            `Added ${tracks.length} songs from the playlist [${title}](${url})`,
+            ...tracks.map((track) => `${track.title}`).slice(0, 8),
+            "..."
+          );
+        } else {
+          display.push(
+            `${queue?.size ? "Added to queue" : "Now playing"} ${
+              track.title
+            }`
+          );
+        }
+        interaction.editReply(res.success(brBuilder(display)));
         return;
       }
       case "search": {
         const trackUrl = options.getString("query", true);
-        const searchEngine = options.getString(
-          "engine",
-          true
-        ) as SearchQueryType;
+        const searchEngine = options.getString("engine") ?? QueryType.YOUTUBE;
         try {
           const { track } = await player.play(voiceChannel as never, trackUrl, {
-            searchEngine,
+            searchEngine: searchEngine as SearchQueryType,
             nodeOptions: { metadata },
           });
-          const text = queue?.size ? "Added to the queue" : "Now playing";
+          const text = queue?.size ? "Added to queue" : "Now playing";
           interaction.editReply(res.success(`${text} ${track.title}`));
         } catch (_) {
-          interaction.editReply(res.danger("Couldn't play the song"));
+          interaction.editReply(res.danger("Unable to play the song"));
         }
         return;
       }
     }
     if (!queue) {
-      interaction.editReply(res.danger("There's no active queue!"));
+      interaction.editReply(res.danger("No active queue!"));
       return;
     }
     switch (options.getSubcommand(true)) {
@@ -314,11 +385,101 @@ new Command({
       }
       case "skip": {
         const amount = options.getInteger("amount") ?? 1;
-        const skipAmount = Math.min(queue.size, amount);
-        for (let i = 0; i < skipAmount; i++) {
-          queue.node.skip();
+        
+        if (!queue.currentTrack) {
+          interaction.editReply(res.warning("No songs to skip!"));
+          return;
         }
-        interaction.editReply(res.success("Songs skipped successfully!"));
+        
+        try {
+          // Log the queue state for debugging
+          console.log(`Skip command: requested to skip ${amount} songs`);
+          console.log(`Current track: ${queue.currentTrack.title}`);
+          console.log(`Queue size: ${queue.tracks.size} additional tracks`);
+          
+          // If there are no more tracks in the queue and we're trying to skip more than 1
+          if (queue.tracks.size === 0 && amount > 1) {
+            // Just skip the current track as that's all we have
+            queue.node.skip();
+            interaction.editReply(res.success("Skipped the current song. No more songs in queue!"));
+            return;
+          }
+          
+          // If just skipping the current song
+          if (amount === 1) {
+            queue.node.skip();
+            interaction.editReply(res.success("Song skipped successfully!"));
+            return;
+          }
+          
+          // For skipping multiple songs, we'll use a different approach:
+          // 1. Save all the tracks currently in the queue
+          const allTracks = queue.tracks.toArray();
+          
+          // 2. Calculate how many tracks we need to skip and how many to keep
+          // We're always skipping the current track, so we need to skip (amount-1) from the queue
+          const skipFromQueue = Math.min(amount - 1, allTracks.length);
+          
+          // Debug log
+          console.log(`Will skip current track + ${skipFromQueue} tracks from queue`);
+          
+          // 3. Get the tracks we want to keep (after skipping)
+          const tracksToKeep = allTracks.slice(skipFromQueue);
+          console.log(`Keeping ${tracksToKeep.length} tracks in queue`);
+          
+          // 4. Skip the current track
+          queue.node.skip();
+          
+          // 5. Wait a moment for the skip operation to complete
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          // 6. If we need to skip more tracks from the queue
+          if (skipFromQueue > 0) {
+            // Clear the entire queue
+            queue.tracks.clear();
+            
+            // Wait a moment before adding tracks back
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            // If we have tracks to keep
+            if (tracksToKeep.length > 0) {
+              // Add each track back to the queue in the right order
+              for (const track of tracksToKeep) {
+                // Use the search engine from the track's source
+                const searchEngine = track.raw?.source as SearchQueryType || QueryType.YOUTUBE;
+                
+                try {
+                  await player.play(voiceChannel as never, track.url, {
+                    nodeOptions: { metadata },
+                    searchEngine
+                  });
+                  
+                  // Short delay between adding tracks to maintain order
+                  await new Promise(resolve => setTimeout(resolve, 100));
+                } catch (err) {
+                  console.error(`Failed to add track back to queue: ${track.title}`, err);
+                }
+              }
+            }
+          }
+          
+          // Create success message
+          const skippedCount = 1 + skipFromQueue; // current + queue tracks
+          let successMessage = `Skipped ${skippedCount} song${skippedCount !== 1 ? 's' : ''}`;
+          
+          if (tracksToKeep.length > 0) {
+            successMessage += `. ${tracksToKeep.length} song${tracksToKeep.length !== 1 ? 's' : ''} remaining in queue.`;
+          } else {
+            successMessage += `. Queue is now empty.`;
+          }
+          
+          interaction.editReply(res.success(successMessage));
+          
+        } catch (error) {
+          console.error("Error skipping songs:", error);
+          interaction.editReply(res.danger("An error occurred while trying to skip songs."));
+        }
+        
         return;
       }
       case "queue": {
@@ -327,7 +488,12 @@ new Command({
       }
       case "shuffle": {
         queue.tracks.shuffle();
-        interaction.editReply(res.success("The queue has been shuffled!"));
+        interaction.editReply(res.success("The queue of songs has been shuffled!"));
+        return;
+      }
+      case "clear": {
+        queue.tracks.clear();
+        interaction.editReply(res.success("The queue of songs has been cleared!"));
         return;
       }
       case "select": {
@@ -341,7 +507,7 @@ new Command({
           );
         } catch (_) {
           interaction.editReply(
-            res.danger("Couldn't skip to the selected song")
+            res.danger("Unable to skip to the selected song")
           );
         }
         return;
@@ -349,7 +515,7 @@ new Command({
       case "repeat": {
         if (!queue || !queue.currentTrack) {
           interaction.editReply(
-            res.danger("There's no song currently playing to repeat!")
+            res.danger("No song is currently playing to repeat!")
           );
           return;
         }
@@ -357,7 +523,7 @@ new Command({
         if (mode === "track") {
           if (queue.repeatMode === QueueRepeatMode.TRACK) {
             interaction.editReply(
-              res.danger("Repeat mode is already enabled for the current song!")
+              res.danger("The repeat mode is already activated for the current song!")
             );
             return;
           }
@@ -370,19 +536,19 @@ new Command({
         } else if (mode === "off") {
           if (queue.repeatMode === QueueRepeatMode.OFF) {
             interaction.editReply(
-              res.danger("Repeat mode is already disabled!")
+              res.danger("The repeat mode is already deactivated!")
             );
             return;
           }
           queue.setRepeatMode(QueueRepeatMode.OFF);
-          interaction.editReply(res.success("Repeat mode disabled."));
+          interaction.editReply(res.success("Repeat mode deactivated."));
         }
         return;
       }
       case "autoplay": {
         if (!queue || !queue.currentTrack) {
           interaction.editReply(
-            res.danger("There's no song currently playing to autoplay!")
+            res.danger("No song is currently playing to activate autoplay!")
           );
           return;
         }
@@ -390,25 +556,25 @@ new Command({
         if (mode === "auto") {
           if (queue.repeatMode === QueueRepeatMode.AUTOPLAY) {
             interaction.editReply(
-              res.danger("Autoplay mode is already enabled for the current song!")
+              res.danger("The autoplay mode is already activated for the current song!")
             );
             return;
           }
           queue.setRepeatMode(QueueRepeatMode.AUTOPLAY);
           interaction.editReply(
             res.success(
-              `autoplaying similar songs to: ${queue.currentTrack.title}`
+              `Playing similar songs automatically: ${queue.currentTrack.title}`
             )
           );
         } else if (mode === "off") {
           if (queue.repeatMode === QueueRepeatMode.OFF) {
             interaction.editReply(
-              res.danger("Autoplay mode is already disabled!")
+              res.danger("The autoplay mode is already deactivated!")
             );
             return;
           }
           queue.setRepeatMode(QueueRepeatMode.OFF);
-          interaction.editReply(res.success("Autoplay mode disabled."));
+          interaction.editReply(res.success("Autoplay mode deactivated."));
         }
         return;
       }

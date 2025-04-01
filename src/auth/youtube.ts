@@ -9,3 +9,6 @@ export const youtubeCredentials : YoutubeTypes = {
      visitorData : process.env.VISITORDATA as string
 }
      
+export const youtubeOauth : { oauthtoken: string } = {
+    oauthtoken : process.env.YTB_OAUTH as string
+}
