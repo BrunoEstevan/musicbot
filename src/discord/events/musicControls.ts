@@ -201,9 +201,9 @@ new Event({
                 const volumeValue = modalInteraction.fields.getTextInputValue("volumeValue");
                 const volumeLevel = parseInt(volumeValue);
                 
-                if (isNaN(volumeLevel) || volumeLevel < 0 || volumeLevel > 100) {
+                if (isNaN(volumeLevel) || volumeLevel < 0 || volumeLevel > 200) {
                     await modalInteraction.reply({
-                        content: "Please enter a valid volume value between 0 and 100.",
+                        content: "Please enter a valid volume value between 0 and 200.",
                         ephemeral: true
                     });
                     return;
@@ -303,11 +303,21 @@ new Event({
                 }
                 
                 // Check if the time is within the limits of the song
-                const timestamp = queue.node.getTimestamp();
-                const totalTime: number = timestamp ? Math.floor(Number(timestamp.total) / 1000) : 0;
-                if (seekTimeInSeconds > totalTime) {
+                const currentTrack = queue.currentTrack;
+                if (!currentTrack) {
                     await modalInteraction.reply({
-                        content: `Time exceeds the duration of the song. Please enter a valid time value.`,
+                        content: "No track is currently playing!",
+                        ephemeral: true
+                    });
+                    return;
+                }
+                
+                const totalTimeMs = currentTrack.durationMS;
+                const totalTimeSeconds = Math.floor(totalTimeMs / 1000);
+                
+                if (seekTimeInSeconds > totalTimeSeconds) {
+                    await modalInteraction.reply({
+                        content: `Time exceeds the duration of the song (${formatTime(totalTimeMs)}). Please enter a valid time value.`,
                         ephemeral: true
                     });
                     return;

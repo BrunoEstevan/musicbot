@@ -2,6 +2,7 @@ import { settings } from "#settings";
 import { brBuilder, createEmbed, createRow } from "@magicyan/discord";
 import { GuildQueue, } from "discord-player";
 import { ButtonBuilder, ButtonStyle, VoiceBasedChannel } from "discord.js";
+import { createCustomProgressBar, getProgressPercentage } from "#functions";
 
 export function musicControlsMenu(queue: GuildQueue, voiceChannel: VoiceBasedChannel) {
     const currentTrack = queue.currentTrack;
@@ -17,10 +18,22 @@ export function musicControlsMenu(queue: GuildQueue, voiceChannel: VoiceBasedCha
     }
     
     const { thumbnail, url, title, author, duration } = currentTrack;
-    const isPaused = queue.node.isPaused();
-    const hasPlayedTracks = queue.history.tracks.size > 0;
+    const isPaused = queue.node.isPaused();    const hasPlayedTracks = queue.history.tracks.size > 0;
     const hasNextTracks = queue.tracks.size > 0;
     const volume = queue.node.volume;
+    
+    // Create progress bar using our custom function
+    const progressBar = createCustomProgressBar(queue, {
+        length: 25,
+        leftChar: '━',
+        rightChar: '─',
+        indicator: '🔘',
+        showTimecodes: true,
+        separator: ' | '
+    });
+    
+    // Get progress percentage for additional info
+    const progressPercentage = getProgressPercentage(queue);
     
     const embed = createEmbed({
         color: settings.colors.fuchsia,
@@ -32,6 +45,8 @@ export function musicControlsMenu(queue: GuildQueue, voiceChannel: VoiceBasedCha
             `**${title}**`,
             `**Artist**: ${author}`,
             `**Duration**: ${duration}`,
+            `\n### ⏱️ Progress (${progressPercentage}%):`,
+            `\`${progressBar}\``,
             `\n### 🎛️ Controls:`,
             `**Volume**: ${volume}%`,
             `**Status**: ${isPaused ? "Paused ⏸️" : "Playing ▶️"}`,
@@ -66,8 +81,7 @@ export function musicControlsMenu(queue: GuildQueue, voiceChannel: VoiceBasedCha
             style: queue.repeatMode === 3 ? ButtonStyle.Danger : ButtonStyle.Success
         })
     );
-    
-    const secondRow = createRow(
+      const secondRow = createRow(
         new ButtonBuilder({
             customId: "music/control/queue",
             emoji: "📋",
@@ -85,6 +99,12 @@ export function musicControlsMenu(queue: GuildQueue, voiceChannel: VoiceBasedCha
             emoji: "⏱️",
             label: "Skip to Position",
             style: ButtonStyle.Primary
+        }),
+        new ButtonBuilder({
+            customId: "music/progress/update",
+            emoji: "🔄",
+            label: "Update",
+            style: ButtonStyle.Secondary
         })
     );
     

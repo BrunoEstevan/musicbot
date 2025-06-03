@@ -28,7 +28,11 @@ new Command({
             .filter(
               (type) =>
                 type === "youtube" ||
+                type ===  "youtubeSearch" ||
+                type === "youtubePlaylist" ||
+                type === "youtubeVideo" ||
                 type === "spotifySearch" ||
+                type === "spotifyAlbum" ||
                 type === "spotifyPlaylist" ||
                 type === "spotifySong"
                 
@@ -125,7 +129,11 @@ new Command({
             .filter(
               (type) =>
                 type === "youtube" ||
-                type === "spotifySearch"|| 
+                type ===  "youtubeSearch" ||
+                type === "youtubePlaylist" ||
+                type === "youtubeVideo" ||
+                type === "spotifySearch" ||
+                type === "spotifyAlbum" ||
                 type === "spotifyPlaylist" ||
                 type === "spotifySong"
             )
@@ -252,49 +260,125 @@ new Command({
         
         let track, searchResult;
         
-        // Tenta primeiro com o engine especificado (ou YouTube por padrão)
         try {
-          const result = await player.play(
-            voiceChannel as never,
-            query,
-            {
-              searchEngine: searchEngine as SearchQueryType,
-              nodeOptions: { metadata },
-            }
-          );
-          track = result.track;
-          searchResult = result.searchResult;
-        } catch (err) {
-          // Se falhou, tenta com Spotify Song
+          // Tenta primeiro com o engine especificado (ou YouTube por padrão)
           try {
             const result = await player.play(
               voiceChannel as never,
               query,
               {
-                searchEngine: QueryType.SPOTIFY_SONG,
+                searchEngine: searchEngine as SearchQueryType,
                 nodeOptions: { metadata },
               }
             );
             track = result.track;
             searchResult = result.searchResult;
-          } catch (spotifyErr) {
-            // Se ainda falhou, tenta com Spotify Search
+          }
+          catch (err) {
+            // Se falhou, tenta com YouTube Video
             try {
               const result = await player.play(
                 voiceChannel as never,
                 query,
                 {
-                  searchEngine: QueryType.SPOTIFY_SEARCH,
+                  searchEngine: QueryType.YOUTUBE_VIDEO,
                   nodeOptions: { metadata },
                 }
               );
               track = result.track;
               searchResult = result.searchResult;
-            } catch (finalErr) {
-              interaction.editReply(res.danger(""));
-              return;
+            } catch (err) {
+              // Se falhou, tenta com YouTube Playlist
+              try {
+                const result = await player.play(
+                  voiceChannel as never,
+                  query,
+                  {
+                    searchEngine: QueryType.YOUTUBE_PLAYLIST,
+                    nodeOptions: { metadata },
+                  }
+                );
+                track = result.track;
+                searchResult = result.searchResult;
+              } catch (err) {
+                // Se falhou, tenta com YouTube Search
+                try {
+                  const result = await player.play(
+                    voiceChannel as never,
+                    query,
+                    {
+                      searchEngine: QueryType.YOUTUBE_SEARCH,
+                      nodeOptions: { metadata },
+                    }
+                  );
+                  track = result.track;
+                  searchResult = result.searchResult;
+                } catch (err) {
+                  // Se falhou, tenta com Spotify Album
+                  try {
+                    const result = await player.play(
+                      voiceChannel as never,
+                      query,
+                      {
+                        searchEngine: QueryType.SPOTIFY_ALBUM,
+                        nodeOptions: { metadata },
+                      }
+                    );
+                    track = result.track;
+                    searchResult = result.searchResult;
+                  } catch (err) {
+                    // Se falhou, tenta com Spotify Song
+                    try {
+                      const result = await player.play(
+                        voiceChannel as never,
+                        query,
+                        {
+                          searchEngine: QueryType.SPOTIFY_SONG,
+                          nodeOptions: { metadata },
+                        }
+                      );
+                      track = result.track;
+                      searchResult = result.searchResult;
+                    } catch (spotifyErr) {
+                      // Se ainda falhou, tenta com Spotify Playlist
+                      try {
+                        const result = await player.play(
+                          voiceChannel as never,
+                          query,
+                          {
+                            searchEngine: QueryType.SPOTIFY_PLAYLIST,
+                            nodeOptions: { metadata },
+                          }
+                        );
+                        track = result.track;
+                        searchResult = result.searchResult;
+                      } catch (spotifyErr) {
+                        // Se ainda falhou, tenta com Spotify Search
+                        try {
+                          const result = await player.play(
+                            voiceChannel as never,
+                            query,
+                            {
+                              searchEngine: QueryType.SPOTIFY_SEARCH,
+                              nodeOptions: { metadata },
+                            }
+                          );
+                          track = result.track;
+                          searchResult = result.searchResult;
+                        } catch (finalErr) {
+                          interaction.editReply(res.danger("Unable to play the song"));
+                          return;
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
+        } catch (err) {
+          interaction.editReply(res.danger("Unable to play the song"));
+          return;
         }
         
         // Set the volume if specified
@@ -335,7 +419,7 @@ new Command({
       }
       case "search": {
         const trackUrl = options.getString("query", true);
-        const searchEngine = options.getString("engine") ?? QueryType.YOUTUBE;
+        const searchEngine = options.getString("engine") ?? QueryType.YOUTUBE_SEARCH;
         try {
           const { track } = await player.play(voiceChannel as never, trackUrl, {
             searchEngine: searchEngine as SearchQueryType,
