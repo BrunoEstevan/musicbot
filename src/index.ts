@@ -5,10 +5,10 @@ import { GatewayIntentBits, ActivityType } from "discord.js";
 import { YoutubeiExtractor } from "discord-player-youtubei";
 // import { poTokenExtraction } from 'discord-player-youtubei/experimental'
 import { SpotifyExtractor } from "@discord-player/extractor";
-import {  spotifyCredentials } from "#auth";
+import { spotifyCredentials} from "#auth";
 import { spawn } from "child_process";
-import { ProxyAgent } from "undici";
-import { proxyMain } from "#proxy";
+// import { ProxyAgent } from "undici";
+// import { proxyMain } from "#proxy";
 
 // Atualizar credenciais a cada 5 minutos
 // setInterval(updateCredentials, 5 * 60 * 1000);
@@ -42,8 +42,9 @@ export const client = await bootstrapApp({
   ;
     // const { token2, visitorData } = youtubeCredentials;
     const { clientId, clientSecret } = spotifyCredentials;
-    const { proxyUrl } = proxyMain;
-    const proxyAgent = new ProxyAgent(proxyUrl);
+    // const { cookie } = cookies;
+    // const { proxyUrl } = proxyMain;
+    // const proxyAgent = new ProxyAgent(proxyUrl);
   // const { oauthtoken } = youtubeOauth;
 
 
@@ -83,13 +84,17 @@ export const client = await bootstrapApp({
 
    player.extractors.register(YoutubeiExtractor, {
       streamOptions: {
-        useClient: "WEB",
+        useClient: "YTMUSIC" ,
+       
       },
-      // cookie: cookies as unknown as string,
-      // authentication: oauthtoken,
-      // disablePlayer: false,
-      proxy: proxyAgent,
-      // overrideBridgeMode: "yt",
+      overrideBridgeMode: "ytmusic",
+      // Opção 1: Usar cookies (recomendado)
+      // cookie: cookie,
+      
+      // Opção 2: Usar OAuth (descomente se preferir)
+      // authentication: process.env.YTB_OAUTH,
+      
+      // proxy: proxyAgent,
       generateWithPoToken: true,
     });
 

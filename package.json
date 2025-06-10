@@ -27,7 +27,6 @@
     "discord-player-youtubei": "^1.4.6",
     "discord.js": "^14.16.3",
     "fast-glob": "^3.3.2",
-    "ffmpeg-static": "^5.2.0",
     "google-it": "^1.6.4",
     "googlevideo": "^2.0.0",
     "happy-dom": "^15.11.6",
@@ -37,11 +36,13 @@
     "node-cron": "^3.0.3",
     "radix3": "^1.1.2",
     "undici": "^7.0.0",
-    "youtubei.js": "^13.4.0",
+    "youtubei.js": "^14.0.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.16.11",
+    "ffmpeg-static": "^5.2.0",
+    "puppeteer": "^24.10.0",
     "tsx": "4.8.0",
     "typescript": "^5.6.3"
   },
